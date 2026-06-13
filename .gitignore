@@ -1,0 +1,6 @@
+*.exe
+*.o
+*.db
+*.db-journal
+error.txt
+.vscode/
