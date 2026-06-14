@@ -1,6 +1,6 @@
 # Automobile Showroom DBMS
 
-A console-based Automobile Showroom Database Management System built using C++ and SQLite. The project manages vehicles, customers, and sales records with proper database storage and input validation.
+A console-based Automobile Showroom Database Management System built using C++ and SQLite. The project manages vehicles, customers, and sales records with proper database storage, input validation, and SQL injection protection via prepared statements.
 
 ## Features
 
@@ -22,7 +22,7 @@ A console-based Automobile Showroom Database Management System built using C++ a
 - Record vehicle sales
 - Validate customer and vehicle IDs before sale
 - Check available vehicle stock
-- Automatically reduce vehicle stock after sale
+- Automatically reduce vehicle stock after sale using atomic transactions
 - View sales records with customer and vehicle details
 
 ### Input Validation
@@ -31,10 +31,14 @@ A console-based Automobile Showroom Database Management System built using C++ a
 - Validates customer phone number, email, name, and gender
 - Prevents duplicate customer phone numbers
 
+### Security
+- All database queries use SQLite prepared statements to prevent SQL injection attacks
+- Sale recording uses atomic transactions — if the stock update fails, the sale record is rolled back automatically
+
 ## Tech Stack
 
 - C++
-- SQLite
+- SQLite (amalgamation)
 - Object-Oriented Programming
 - File-based database storage
 
@@ -44,8 +48,6 @@ A console-based Automobile Showroom Database Management System built using C++ a
 AutomobileShowroomDBMS/
 │
 ├── main.cpp
-├── sqlite3.c
-├── sqlite3.h
 ├── README.md
 ├── .gitignore
 │
@@ -70,36 +72,59 @@ AutomobileShowroomDBMS/
 │
 └── data/
     └── showroom.db
-Database Tables
+```
+
+## Database Tables
 
 The project uses three main tables:
 
-Vehicles
+**Vehicles** — stores vehicle inventory details such as type, model, fuel type, transmission, price, and stock.
 
-Stores vehicle inventory details such as type, model, fuel type, transmission, price, and stock.
+**Customers** — stores customer details such as name, email, phone number, address, and gender.
 
-Customers
+**Sales** — stores sales transactions and connects customers with purchased vehicles via foreign keys.
 
-Stores customer details such as name, email, phone number, address, and gender.
+## Dependencies
 
-Sales
+This project requires the SQLite amalgamation files (`sqlite3.c` and `sqlite3.h`). Download them from:
+[https://sqlite.org/download.html](https://sqlite.org/download.html) → *sqlite-amalgamation-*.zip*
 
-Stores sales transactions and connects customers with purchased vehicles.
+Place `sqlite3.c` and `sqlite3.h` in the project root before compiling.
 
-How to Compile and Run
+## How to Compile and Run
 
-First compile SQLite:
-
+**Step 1 — Compile SQLite (Windows):**
+```bash
 gcc -c sqlite3.c -o sqlite3.o
+```
 
-Then compile the project:
+**Step 2 — Compile the project:**
 
+Windows:
+```bash
 g++ main.cpp database\DatabaseManager.cpp services\VehicleService.cpp services\CustomerService.cpp services\SalesService.cpp sqlite3.o -o showroom
+```
 
-Run the program:
+Linux/Mac:
+```bash
+g++ main.cpp database/DatabaseManager.cpp services/VehicleService.cpp services/CustomerService.cpp services/SalesService.cpp sqlite3.o -o showroom
+```
 
+**Step 3 — Run:**
+
+Windows:
+```bash
 showroom.exe
-Menu Options
+```
+
+Linux/Mac:
+```bash
+./showroom
+```
+
+## Menu Options
+
+```
 --- Vehicle Management ---
 1. Add Vehicle
 2. View Vehicles
@@ -119,28 +144,34 @@ Menu Options
 12. View Sales
 
 13. Exit
-Example Workflow
-Add a vehicle with price and stock.
-Add a customer with valid contact details.
-Record a sale using customer ID and vehicle ID.
-The system checks stock availability.
-After the sale, vehicle stock is reduced automatically.
-Sales records can be viewed from the menu.
-Learning Outcomes
+```
+
+## Example Workflow
+
+1. Add a vehicle with price and stock.
+2. Add a customer with valid contact details.
+3. Record a sale using customer ID and vehicle ID.
+4. The system checks stock availability.
+5. After the sale, vehicle stock is reduced automatically within a transaction.
+6. Sales records can be viewed from the menu.
+
+## Learning Outcomes
 
 This project demonstrates:
 
-Object-oriented programming in C++
-SQLite database integration
-CRUD operations
-Table relationships using customer, vehicle, and sales records
-Input validation
-Modular project structure
-Basic inventory and transaction management
-Future Improvements
-Generate bill/receipt after each sale
-Add login system for admin users
-Improve foreign key enforcement
-Add better formatted reports
-Export sales records to file
-Add GUI in future
+- Object-oriented programming in C++
+- SQLite database integration
+- CRUD operations
+- Table relationships using customer, vehicle, and sales records
+- Input validation
+- Modular project structure
+- SQL injection prevention using prepared statements
+- Atomic database transactions
+
+## Future Improvements
+
+- Generate bill/receipt after each sale
+- Add login system for admin users
+- Add better formatted reports
+- Export sales records to CSV
+- Add GUI frontend
