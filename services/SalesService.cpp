@@ -10,41 +10,29 @@ SalesService::SalesService(DatabaseManager &dbManager) : dbManager(dbManager) {}
 
 bool SalesService_customerExists(sqlite3 *db, int customerId)
 {
-  string query = "SELECT customer_id FROM customers WHERE customer_id = " + to_string(customerId) + ";";
-
+  const char *query = "SELECT customer_id FROM customers WHERE customer_id = ?;";
   sqlite3_stmt *stmt;
-  int result = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
 
-  if (result != SQLITE_OK)
-  {
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
     return false;
-  }
 
-  bool exists = false;
-
-  if (sqlite3_step(stmt) == SQLITE_ROW)
-  {
-    exists = true;
-  }
-
+  sqlite3_bind_int(stmt, 1, customerId);
+  bool exists = (sqlite3_step(stmt) == SQLITE_ROW);
   sqlite3_finalize(stmt);
   return exists;
 }
 
 bool SalesService_getVehicleDetails(sqlite3 *db, int vehicleId, double &price, int &stock)
 {
-  string query = "SELECT price, stock FROM vehicles WHERE vehicle_id = " + to_string(vehicleId) + ";";
-
+  const char *query = "SELECT price, stock FROM vehicles WHERE vehicle_id = ?;";
   sqlite3_stmt *stmt;
-  int result = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
 
-  if (result != SQLITE_OK)
-  {
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
     return false;
-  }
+
+  sqlite3_bind_int(stmt, 1, vehicleId);
 
   bool found = false;
-
   if (sqlite3_step(stmt) == SQLITE_ROW)
   {
     price = sqlite3_column_double(stmt, 0);
@@ -94,31 +82,66 @@ void SalesService::recordSale()
 
   double totalAmount = price * quantity;
 
-  string insertSaleQuery =
-      "INSERT INTO sales (customer_id, vehicle_id, quantity, total_amount) VALUES (" +
-      to_string(customerId) + ", " +
-      to_string(vehicleId) + ", " +
-      to_string(quantity) + ", " +
-      to_string(totalAmount) + ");";
-
-  string updateStockQuery =
-      "UPDATE vehicles SET stock = stock - " + to_string(quantity) +
-      " WHERE vehicle_id = " + to_string(vehicleId) + ";";
-
-  if (dbManager.executeQuery(insertSaleQuery) && dbManager.executeQuery(updateStockQuery))
+  // Use a transaction so both queries succeed or fail together
+  if (sqlite3_exec(db, "BEGIN TRANSACTION;", nullptr, nullptr, nullptr) != SQLITE_OK)
   {
+    cout << "\nFailed to start transaction.\n";
+    return;
+  }
+
+  // Insert sale record
+  const char *insertQuery =
+      "INSERT INTO sales (customer_id, vehicle_id, quantity, total_amount) VALUES (?, ?, ?, ?);";
+
+  sqlite3_stmt *insertStmt;
+  bool success = false;
+
+  if (sqlite3_prepare_v2(db, insertQuery, -1, &insertStmt, nullptr) == SQLITE_OK)
+  {
+    sqlite3_bind_int(insertStmt, 1, customerId);
+    sqlite3_bind_int(insertStmt, 2, vehicleId);
+    sqlite3_bind_int(insertStmt, 3, quantity);
+    sqlite3_bind_double(insertStmt, 4, totalAmount);
+
+    if (sqlite3_step(insertStmt) == SQLITE_DONE)
+    {
+      // Update stock
+      const char *updateQuery =
+          "UPDATE vehicles SET stock = stock - ? WHERE vehicle_id = ?;";
+
+      sqlite3_stmt *updateStmt;
+
+      if (sqlite3_prepare_v2(db, updateQuery, -1, &updateStmt, nullptr) == SQLITE_OK)
+      {
+        sqlite3_bind_int(updateStmt, 1, quantity);
+        sqlite3_bind_int(updateStmt, 2, vehicleId);
+
+        if (sqlite3_step(updateStmt) == SQLITE_DONE)
+          success = true;
+
+        sqlite3_finalize(updateStmt);
+      }
+    }
+
+    sqlite3_finalize(insertStmt);
+  }
+
+  if (success)
+  {
+    sqlite3_exec(db, "COMMIT;", nullptr, nullptr, nullptr);
     cout << "\nSale recorded successfully.\n";
     cout << "Total amount: " << fixed << setprecision(2) << totalAmount << endl;
   }
   else
   {
+    sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
     cout << "\nFailed to record sale.\n";
   }
 }
 
 void SalesService::viewSales()
 {
-  string query =
+  const char *query =
       "SELECT "
       "sales.sale_id, "
       "customers.name, "
@@ -133,9 +156,7 @@ void SalesService::viewSales()
   sqlite3_stmt *stmt;
   sqlite3 *db = dbManager.getDatabase();
 
-  int result = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
-
-  if (result != SQLITE_OK)
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
   {
     cout << "Failed to fetch sales.\n";
     return;
@@ -152,11 +173,9 @@ void SalesService::viewSales()
   cout << "-------------------------------------------------------------------------------------------------\n";
 
   bool found = false;
-
   while (sqlite3_step(stmt) == SQLITE_ROW)
   {
     found = true;
-
     cout << left << setw(8) << sqlite3_column_int(stmt, 0)
          << setw(20) << reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))
          << setw(25) << reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2))
@@ -167,9 +186,7 @@ void SalesService::viewSales()
   }
 
   if (!found)
-  {
     cout << "No sales records found.\n";
-  }
 
   sqlite3_finalize(stmt);
 }

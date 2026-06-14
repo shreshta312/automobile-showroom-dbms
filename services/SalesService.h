@@ -13,7 +13,6 @@ public:
 
   void recordSale();
   void viewSales();
-  void updateVehicle();
 };
 
 #endif

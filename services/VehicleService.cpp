@@ -20,55 +20,37 @@ bool hasAlphabet(const string &text)
   for (char ch : text)
   {
     if (isalpha(ch))
-    {
       return true;
-    }
   }
   return false;
 }
 
 bool vehicleExists(sqlite3 *db, int vehicleId)
 {
-  string query = "SELECT vehicle_id FROM vehicles WHERE vehicle_id = " + to_string(vehicleId) + ";";
-
+  const char *query = "SELECT vehicle_id FROM vehicles WHERE vehicle_id = ?;";
   sqlite3_stmt *stmt;
-  int result = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
 
-  if (result != SQLITE_OK)
-  {
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
     return false;
-  }
 
-  bool exists = false;
+  sqlite3_bind_int(stmt, 1, vehicleId);
 
-  if (sqlite3_step(stmt) == SQLITE_ROW)
-  {
-    exists = true;
-  }
-
+  bool exists = (sqlite3_step(stmt) == SQLITE_ROW);
   sqlite3_finalize(stmt);
   return exists;
 }
 
 bool vehicleHasSales(sqlite3 *db, int vehicleId)
 {
-  string query = "SELECT sale_id FROM sales WHERE vehicle_id = " + to_string(vehicleId) + ";";
-
+  const char *query = "SELECT sale_id FROM sales WHERE vehicle_id = ?;";
   sqlite3_stmt *stmt;
-  int result = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
 
-  if (result != SQLITE_OK)
-  {
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
     return false;
-  }
 
-  bool hasSales = false;
+  sqlite3_bind_int(stmt, 1, vehicleId);
 
-  if (sqlite3_step(stmt) == SQLITE_ROW)
-  {
-    hasSales = true;
-  }
-
+  bool hasSales = (sqlite3_step(stmt) == SQLITE_ROW);
   sqlite3_finalize(stmt);
   return hasSales;
 }
@@ -76,24 +58,17 @@ bool vehicleHasSales(sqlite3 *db, int vehicleId)
 string getValidVehicleType()
 {
   string type;
-
   while (true)
   {
     type = InputValidator::getString("\nEnter vehicle type (Car/Bike/Heavy Vehicle): ");
     string lowerType = toLowerCase(type);
 
     if (lowerType == "car")
-    {
       return "Car";
-    }
-    else if (lowerType == "bike")
-    {
+    if (lowerType == "bike")
       return "Bike";
-    }
-    else if (lowerType == "heavy vehicle" || lowerType == "heavyvehicle")
-    {
+    if (lowerType == "heavy vehicle" || lowerType == "heavyvehicle")
       return "Heavy Vehicle";
-    }
 
     cout << "Invalid vehicle type. Please enter Car, Bike, or Heavy Vehicle.\n";
   }
@@ -102,28 +77,19 @@ string getValidVehicleType()
 string getValidFuelType()
 {
   string fuelType;
-
   while (true)
   {
     fuelType = InputValidator::getString("Enter fuel type (Petrol/Diesel/CNG/EV): ");
     string lowerFuel = toLowerCase(fuelType);
 
     if (lowerFuel == "petrol")
-    {
       return "Petrol";
-    }
-    else if (lowerFuel == "diesel")
-    {
+    if (lowerFuel == "diesel")
       return "Diesel";
-    }
-    else if (lowerFuel == "cng")
-    {
+    if (lowerFuel == "cng")
       return "CNG";
-    }
-    else if (lowerFuel == "ev" || lowerFuel == "electric")
-    {
+    if (lowerFuel == "ev" || lowerFuel == "electric")
       return "EV";
-    }
 
     cout << "Invalid fuel type. Please enter Petrol, Diesel, CNG, or EV.\n";
   }
@@ -132,20 +98,15 @@ string getValidFuelType()
 string getValidTransmission()
 {
   string transmission;
-
   while (true)
   {
     transmission = InputValidator::getString("Enter transmission type (Manual/Automatic): ");
     string lowerTransmission = toLowerCase(transmission);
 
     if (lowerTransmission == "manual")
-    {
       return "Manual";
-    }
-    else if (lowerTransmission == "automatic")
-    {
+    if (lowerTransmission == "automatic")
       return "Automatic";
-    }
 
     cout << "Invalid transmission type. Please enter Manual or Automatic.\n";
   }
@@ -154,16 +115,11 @@ string getValidTransmission()
 string getValidModelName()
 {
   string model;
-
   while (true)
   {
     model = InputValidator::getString("Enter model name: ");
-
     if (hasAlphabet(model))
-    {
       return model;
-    }
-
     cout << "Invalid model name. Model name should contain letters, not only numbers.\n";
   }
 }
@@ -171,16 +127,11 @@ string getValidModelName()
 double getValidPrice()
 {
   double price;
-
   while (true)
   {
     price = InputValidator::getDouble("Enter price: ");
-
     if (price > 0)
-    {
       return price;
-    }
-
     cout << "Price must be greater than 0.\n";
   }
 }
@@ -188,62 +139,61 @@ double getValidPrice()
 int getValidStock()
 {
   int stock;
-
   while (true)
   {
     stock = InputValidator::getInt("Enter stock quantity: ");
-
     if (stock >= 0)
-    {
       return stock;
-    }
-
     cout << "Stock cannot be negative.\n";
   }
 }
 
 void VehicleService::addVehicle()
 {
-  string type, model, fuelType, transmission;
-  double price;
-  int stock;
+  string type = getValidVehicleType();
+  string model = getValidModelName();
+  string fuelType = getValidFuelType();
+  string transmission = getValidTransmission();
+  double price = getValidPrice();
+  int stock = getValidStock();
 
-  type = getValidVehicleType();
-  model = getValidModelName();
-  fuelType = getValidFuelType();
-  transmission = getValidTransmission();
-  price = getValidPrice();
-  stock = getValidStock();
-
-  string query =
-      "INSERT INTO vehicles (type, model, fuel_type, transmission, price, stock) VALUES ('" +
-      type + "', '" +
-      model + "', '" +
-      fuelType + "', '" +
-      transmission + "', " +
-      to_string(price) + ", " +
-      to_string(stock) + ");";
-
-  if (dbManager.executeQuery(query))
-  {
-    cout << "\nVehicle added successfully.\n";
-  }
-  else
-  {
-    cout << "\nFailed to add vehicle.\n";
-  }
-}
-
-void VehicleService::viewVehicles()
-{
-  string query = "SELECT vehicle_id, type, model, fuel_type, transmission, price, stock FROM vehicles;";
+  const char *query =
+      "INSERT INTO vehicles (type, model, fuel_type, transmission, price, stock) "
+      "VALUES (?, ?, ?, ?, ?, ?);";
 
   sqlite3_stmt *stmt;
   sqlite3 *db = dbManager.getDatabase();
 
-  int result = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
+  {
+    cout << "\nFailed to add vehicle.\n";
+    return;
+  }
 
-  if (result != SQLITE_OK)
+  sqlite3_bind_text(stmt, 1, type.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, model.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 3, fuelType.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 4, transmission.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_double(stmt, 5, price);
+  sqlite3_bind_int(stmt, 6, stock);
+
+  if (sqlite3_step(stmt) == SQLITE_DONE)
+    cout << "\nVehicle added successfully.\n";
+  else
+    cout << "\nFailed to add vehicle.\n";
+
+  sqlite3_finalize(stmt);
+}
+
+void VehicleService::viewVehicles()
+{
+  const char *query =
+      "SELECT vehicle_id, type, model, fuel_type, transmission, price, stock FROM vehicles;";
+
+  sqlite3_stmt *stmt;
+  sqlite3 *db = dbManager.getDatabase();
+
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
   {
     cout << "Failed to fetch vehicles.\n";
     return;
@@ -261,11 +211,9 @@ void VehicleService::viewVehicles()
   cout << "---------------------------------------------------------------------------------------------\n";
 
   bool found = false;
-
   while (sqlite3_step(stmt) == SQLITE_ROW)
   {
     found = true;
-
     cout << left << setw(5) << sqlite3_column_int(stmt, 0)
          << setw(15) << reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))
          << setw(25) << reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2))
@@ -277,9 +225,7 @@ void VehicleService::viewVehicles()
   }
 
   if (!found)
-  {
     cout << "No vehicles found in inventory.\n";
-  }
 
   sqlite3_finalize(stmt);
 }
@@ -299,19 +245,27 @@ void VehicleService::updateVehicle()
   double newPrice = getValidPrice();
   int newStock = getValidStock();
 
-  string updateQuery =
-      "UPDATE vehicles SET price = " + to_string(newPrice) +
-      ", stock = " + to_string(newStock) +
-      " WHERE vehicle_id = " + to_string(vehicleId) + ";";
+  const char *query =
+      "UPDATE vehicles SET price = ?, stock = ? WHERE vehicle_id = ?;";
 
-  if (dbManager.executeQuery(updateQuery))
-  {
-    cout << "\nVehicle updated successfully.\n";
-  }
-  else
+  sqlite3_stmt *stmt;
+
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
   {
     cout << "\nFailed to update vehicle.\n";
+    return;
   }
+
+  sqlite3_bind_double(stmt, 1, newPrice);
+  sqlite3_bind_int(stmt, 2, newStock);
+  sqlite3_bind_int(stmt, 3, vehicleId);
+
+  if (sqlite3_step(stmt) == SQLITE_DONE)
+    cout << "\nVehicle updated successfully.\n";
+  else
+    cout << "\nFailed to update vehicle.\n";
+
+  sqlite3_finalize(stmt);
 }
 
 void VehicleService::deleteVehicle()
@@ -332,41 +286,46 @@ void VehicleService::deleteVehicle()
     return;
   }
 
-  string deleteQuery = "DELETE FROM vehicles WHERE vehicle_id = " + to_string(vehicleId) + ";";
+  const char *query = "DELETE FROM vehicles WHERE vehicle_id = ?;";
+  sqlite3_stmt *stmt;
 
-  if (dbManager.executeQuery(deleteQuery))
-  {
-    cout << "\nVehicle deleted successfully.\n";
-  }
-  else
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
   {
     cout << "\nFailed to delete vehicle.\n";
+    return;
   }
+
+  sqlite3_bind_int(stmt, 1, vehicleId);
+
+  if (sqlite3_step(stmt) == SQLITE_DONE)
+    cout << "\nVehicle deleted successfully.\n";
+  else
+    cout << "\nFailed to delete vehicle.\n";
+
+  sqlite3_finalize(stmt);
 }
 
 void VehicleService::searchVehicle()
 {
   string keyword = InputValidator::getString("\nEnter vehicle model/type/fuel to search: ");
+  string pattern = "%" + keyword + "%";
 
-  string query =
+  const char *query =
       "SELECT vehicle_id, type, model, fuel_type, transmission, price, stock FROM vehicles "
-      "WHERE type LIKE '%" +
-      keyword + "%' "
-                "OR model LIKE '%" +
-      keyword + "%' "
-                "OR fuel_type LIKE '%" +
-      keyword + "%';";
+      "WHERE type LIKE ? OR model LIKE ? OR fuel_type LIKE ?;";
 
   sqlite3_stmt *stmt;
   sqlite3 *db = dbManager.getDatabase();
 
-  int result = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
-
-  if (result != SQLITE_OK)
+  if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) != SQLITE_OK)
   {
     cout << "Failed to search vehicles.\n";
     return;
   }
+
+  sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 2, pattern.c_str(), -1, SQLITE_TRANSIENT);
+  sqlite3_bind_text(stmt, 3, pattern.c_str(), -1, SQLITE_TRANSIENT);
 
   cout << "\nSearch Results\n";
   cout << "---------------------------------------------------------------------------------------------\n";
@@ -380,11 +339,9 @@ void VehicleService::searchVehicle()
   cout << "---------------------------------------------------------------------------------------------\n";
 
   bool found = false;
-
   while (sqlite3_step(stmt) == SQLITE_ROW)
   {
     found = true;
-
     cout << left << setw(5) << sqlite3_column_int(stmt, 0)
          << setw(15) << reinterpret_cast<const char *>(sqlite3_column_text(stmt, 1))
          << setw(25) << reinterpret_cast<const char *>(sqlite3_column_text(stmt, 2))
@@ -396,9 +353,7 @@ void VehicleService::searchVehicle()
   }
 
   if (!found)
-  {
     cout << "No matching vehicles found.\n";
-  }
 
   sqlite3_finalize(stmt);
 }
